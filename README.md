@@ -15,8 +15,8 @@ jsloot main.js
 ```
 ## TODO
 
--[ ] Handle data from STDIN
--[ ] Helpers
--[ ] Silent mode
--[ ] Grep also JWT, weird stuff etc.
--[ ] Handle search in a directory
+- &#9744; Handle data from STDIN
+- &#9744; Helpers
+- &#9744; Silent mode
+- &#9744; Grep also JWT, weird stuff etc.
+- &#9744; Handle search in a directory
