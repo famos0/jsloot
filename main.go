@@ -15,7 +15,7 @@ var regex3 string = "([a-zA-Z0-9_\\-/]{1,}/[a-zA-Z0-9_\\-/]{1,}\\.(?:[a-zA-Z]{1,
 var regex4 string = "([a-zA-Z0-9_\\-/]{1,}/[a-zA-Z0-9_\\-/]{3,}(?:[\\?|#][^\"|']{0,}|))"                              // Relative endpoints without extensions but with parameters
 var regex5 string = "([a-zA-Z0-9_\\-]{1,}\\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\\?|#][^\"|']{0,}|))" // Filenames
 
-var regex_full string = "(" + regex1 + "|" + regex2 + "|" + regex3 + "|" + regex4 + "|" + regex5 + ")"
+var regex_full string = "(?:\"|')" + "(" + regex1 + "|" + regex2 + "|" + regex3 + "|" + regex4 + "|" + regex5 + ")" + "(?:\"|')"
 
 func isError(err error) bool {
 	if err != nil {
