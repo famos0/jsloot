@@ -179,22 +179,26 @@ func isDir(dir string) bool {
 	return fi.IsDir()
 }
 
+func showHelper() {
+	helper := []string{
+		"JSLoot",
+		"",
+		"Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript",
+		"",
+		" -u, --url <url>		Loot from on the URL",
+		" -f, --file <path>		Loot from a local file",
+		" -d, --dir <path>		Loot from a directory but no recursive",
+		" -D, --Dir <path>		Loot from a directory recursively",
+		" -s, --stdin			Loot from URLs given by Stdin",
+		"",
+	}
+
+	fmt.Fprintf(os.Stderr, strings.Join(helper, "\n"))
+}
+
 func init() {
 	flag.Usage = func() {
-		helper := []string{
-			"JSLoot",
-			"",
-			"Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript",
-			"",
-			" -u, --url <url>		Loot from on the URL",
-			" -f, --file <path>		Loot from a local file",
-			" -d, --dir <path>		Loot from a directory but no recursive",
-			" -D, --Dir <path>		Loot from a directory recursively",
-			" -s, --stdin			Loot from URLs given by Stdin",
-			"",
-		}
-
-		fmt.Fprintf(os.Stderr, strings.Join(helper, "\n"))
+		showHelper()
 	}
 }
 
@@ -284,6 +288,7 @@ func main() {
 			}
 		}
 	} else {
+		showHelper()
 		return
 	}
 }
