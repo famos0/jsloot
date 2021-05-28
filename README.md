@@ -1,4 +1,4 @@
-# jsloot v0.1
+# JSLoot
 
 Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript
 
