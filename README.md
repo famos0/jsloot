@@ -1,6 +1,6 @@
 # jsloot v0.1
 
-Looting URLs in JS files
+Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript
 
 ## Install
 
@@ -11,11 +11,16 @@ go get -u github.com/famos0/jsloot
 ## Use
 
 ```bash
-jsloot main.js
-```
-## TODO
+$ jsloot -h
+JSLoot
 
-- &#9744; Helpers
-- &#9744; Silent mode
-- &#9744; Grep also JWT, weird stuff etc.
-- &#9744; Handle search in a directory
+Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript
+
+ -u, --url <url>                Loot from on the URL
+ -f, --file <path>              Loot from a local file
+ -d, --dir <path>               Loot from a directory but no recursive
+ -D, --Dir <path>               Loot from a directory recursively
+ -s, --stdin                    Loot from URLs given by Stdin
+```
+
+## Happy Looting :)
