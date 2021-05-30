@@ -2,17 +2,21 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
 )
+
+type headers []string
 
 // OUTPUT COLORS
 
@@ -159,10 +163,72 @@ func getJsURLsFromHTML(response *http.Response) []string {
 	return urls
 }
 
-func getResponseFromURL(url string) *http.Response {
-	response, err := http.Get(url)
+func setHostHeaderIfExists(headers []string) (host string) {
+	for _, header := range headers {
+		h := strings.Split(header, ":")
+		if len(h) != 2 {
+			fmt.Printf("Error in headers declaration: %s\n", header)
+		}
+		if h[0] == "Host" {
+			host = h[1]
+		}
+	}
+	return
+}
+
+func createClient(proxy string, not_check_cert bool) *http.Client {
+
+	var proxyClient func(*http.Request) (*url.URL, error)
+	if proxy == "" {
+		proxyClient = http.ProxyFromEnvironment
+	} else {
+		tmp, _ := url.Parse(proxy)
+		proxyClient = http.ProxyURL(tmp)
+	}
+
+	transport := &http.Transport{
+		Proxy:               proxyClient,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: not_check_cert},
+	}
+
+	client := &http.Client{
+		Transport: transport,
+	}
+
+	return client
+}
+
+func createRequest(requestURL string, host string, cookies string, headers []string) *http.Request {
+
+	req, err := http.NewRequest("GET", requestURL, nil)
+	if isError(err) {
+		os.Exit(1)
+	}
+
+	if cookies != "" {
+		req.Header.Set("Cookie", cookies)
+	}
+
+	if host != "" {
+		req.Host = host
+	}
+
+	for _, header := range headers {
+		h := strings.Split(header, ":")
+		req.Header.Set(h[0], h[1])
+	}
+
+	return req
+}
+
+func getResponseFromURL(url string, proxy string, not_check_cert bool, host string, cookies string, headers []string) *http.Response {
+	client := createClient(proxy, not_check_cert)
+	req := createRequest(url, host, cookies, headers)
+	response, err := client.Do(req)
 	if err != nil {
-		print(err)
+		fmt.Println(err)
 		return nil
 	}
 	return response
@@ -172,7 +238,7 @@ func getContentFromResponse(response *http.Response) []byte {
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		print(err)
+		fmt.Println(err)
 		return nil
 	}
 
@@ -239,21 +305,23 @@ func lootJS(content []byte, regex string, filename string, show_filename, verbos
 	printResults(filename, result, verbose)
 }
 
-func lootJSOnURL(url string, regex string, show_matching_location bool, verbose bool) {
+func lootJSOnURL(url string, regex string, show_matching_location bool, verbose bool, proxy string, not_check_cert bool, host string, cookies string, headers []string) {
 	var content []byte
-	response := getResponseFromURL(url)
-	if isResponseJavaScript(response) {
-		content = getContentFromResponse(response)
-		lootJS(content, regex, url, show_matching_location, verbose)
-	} else if isResponseHTML(response) {
-		urls := getJsURLsFromHTML(response)
-		for _, url := range urls {
-			response = getResponseFromURL(url)
+	response := getResponseFromURL(url, proxy, not_check_cert, host, cookies, headers)
+	if response != nil {
+		if isResponseJavaScript(response) {
 			content = getContentFromResponse(response)
 			lootJS(content, regex, url, show_matching_location, verbose)
+		} else if isResponseHTML(response) {
+			urls := getJsURLsFromHTML(response)
+			for _, url := range urls {
+				response := getResponseFromURL(url, proxy, not_check_cert, host, cookies, headers)
+				content = getContentFromResponse(response)
+				lootJS(content, regex, url, show_matching_location, verbose)
+			}
+		} else {
+			return
 		}
-	} else {
-		return
 	}
 }
 
@@ -319,6 +387,12 @@ func showHelper() {
 		" -r, --recurse <path>\t\tTo combine with -d option. Loot recursively",
 		" -s, --stdin\t\t\tLoot from URLs given by Stdin",
 		"",
+		"-- HOW TO LOOT ? -- ",
+		" -H, --header <header>\t\tSpecify header. Can be used multiple times",
+		" -c, --cookies <cookies>\tSpecify cookies",
+		" -x, --proxy <proxy>\t\tSpecify proxy",
+		" -k, --insecure\t\t\tAllow insecure server connections when using SSL",
+		"",
 		"-- WHAT TO LOOT ? -- ",
 		" -e, --regexp <PATTERNS>\tLoot with a custom pattern",
 		" -g, --grep-pattern <1,2,...>\tWhen specified, custom the looting patterns :",
@@ -330,7 +404,7 @@ func showHelper() {
 		"\t\t\t\t      Can be used in complement with -e",
 		"",
 		"-- SHOW THE LOOT -- ",
-		" -H, --with-filename\t\tShow filename/URL of loot location",
+		" -w, --with-filename\t\tShow filename/URL of loot location",
 		" -v, --verbose\t\t\tPrint with detailed output and colors",
 	}
 
@@ -341,6 +415,19 @@ func init() {
 	flag.Usage = func() {
 		showHelper()
 	}
+}
+
+func (i *headers) String() string {
+	var rep string
+	for _, e := range *i {
+		rep += e
+	}
+	return rep
+}
+
+func (i *headers) Set(value string) error {
+	*i = append(*i, value)
+	return nil
 }
 
 func main() {
@@ -373,9 +460,25 @@ func main() {
 	flag.StringVar(&custom_regex, "regexp", "", "")
 	flag.StringVar(&custom_regex, "e", "", "")
 
+	var headers headers
+	flag.Var(&headers, "header", "")
+	flag.Var(&headers, "H", "")
+
+	var proxy string
+	flag.StringVar(&proxy, "proxy", "", "")
+	flag.StringVar(&proxy, "x", "", "")
+
+	var cookies string
+	flag.StringVar(&cookies, "cookies", "", "")
+	flag.StringVar(&cookies, "c", "", "")
+
+	var not_check_cert bool
+	flag.BoolVar(&not_check_cert, "insecure", false, "")
+	flag.BoolVar(&not_check_cert, "k", false, "")
+
 	var show_matching_location bool
 	flag.BoolVar(&show_matching_location, "with-filename", false, "")
-	flag.BoolVar(&show_matching_location, "H", false, "")
+	flag.BoolVar(&show_matching_location, "w", false, "")
 
 	var verbose bool
 	flag.BoolVar(&verbose, "verbose", false, "")
@@ -385,9 +488,11 @@ func main() {
 
 	regex := buildRegex(grep, custom_regex)
 
+	host := setHostHeaderIfExists(headers)
+
 	if regex != "" {
 		if url != "" {
-			lootJSOnURL(url, regex, show_matching_location, verbose)
+			lootJSOnURL(url, regex, show_matching_location, verbose, proxy, not_check_cert, host, cookies, headers)
 
 		} else if file != "" {
 			lootJSOnFile([]string{file}, regex, show_matching_location, verbose)
@@ -407,7 +512,7 @@ func main() {
 			sc := bufio.NewScanner(os.Stdin)
 			for sc.Scan() {
 				url = sc.Text()
-				lootJSOnURL(url, regex, show_matching_location, verbose)
+				lootJSOnURL(url, regex, show_matching_location, verbose, proxy, not_check_cert, host, cookies, headers)
 			}
 		} else {
 			showHelper()

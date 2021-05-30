@@ -39,3 +39,8 @@ Looting URLs, IPv4 addresses, Base64 encoded stuff, AWS-keys or whatever you wan
 ```
 
 ## Happy Looting :)
+
+## TODO
+1. Proxy
+2. Header
+3. Cookie
