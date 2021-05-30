@@ -91,17 +91,27 @@ func showMatchType(target []byte) (output string) {
 	return
 }
 
-func printResults(filename string, result [][]byte, verbose bool) {
+func writeContentToFile(file *os.File, content string) {
+	file.WriteString(content)
+}
+
+func printResults(filename string, result [][]byte, verbose bool, file *os.File) {
+
 	for _, element := range result {
+		var output string
 		if verbose {
-			fmt.Print(showMatchType(element))
+			output += showMatchType(element)
 		}
 		if filename != "" {
-			fmt.Println(filename + ":\t" + string(element))
+			output += filename + ":\t" + string(element)
 		} else {
-			fmt.Println(string(element))
+			output += string(element)
 		}
-
+		output += "\n"
+		fmt.Print(output)
+		if file != nil {
+			file.WriteString(output)
+		}
 	}
 }
 
@@ -297,27 +307,27 @@ func buildRegex(grep string, custom_expression string) (regex string) {
 	return
 }
 
-func lootJS(content []byte, regex string, filename string, show_filename, verbose bool) {
+func lootJS(content []byte, regex string, filename string, show_filename, verbose bool, output_file *os.File) {
 	result := contentParser(content, regex)
 	if !show_filename {
 		filename = ""
 	}
-	printResults(filename, result, verbose)
+	printResults(filename, result, verbose, output_file)
 }
 
-func lootJSOnURL(url string, regex string, show_matching_location bool, verbose bool, proxy string, not_check_cert bool, host string, cookies string, headers []string) {
+func lootJSOnURL(url string, regex string, show_matching_location bool, verbose bool, proxy string, not_check_cert bool, host string, cookies string, headers []string, output_file *os.File) {
 	var content []byte
 	response := getResponseFromURL(url, proxy, not_check_cert, host, cookies, headers)
 	if response != nil {
 		if isResponseJavaScript(response) {
 			content = getContentFromResponse(response)
-			lootJS(content, regex, url, show_matching_location, verbose)
+			lootJS(content, regex, url, show_matching_location, verbose, output_file)
 		} else if isResponseHTML(response) {
 			urls := getJsURLsFromHTML(response)
 			for _, url := range urls {
 				response := getResponseFromURL(url, proxy, not_check_cert, host, cookies, headers)
 				content = getContentFromResponse(response)
-				lootJS(content, regex, url, show_matching_location, verbose)
+				lootJS(content, regex, url, show_matching_location, verbose, output_file)
 			}
 		} else {
 			return
@@ -325,11 +335,11 @@ func lootJSOnURL(url string, regex string, show_matching_location bool, verbose 
 	}
 }
 
-func lootJSOnFile(file_list []string, regex string, show_matching_location bool, verbose bool) {
+func lootJSOnFile(file_list []string, regex string, show_matching_location bool, verbose bool, output_file *os.File) {
 	var content []byte
 	for _, file := range file_list {
 		content = getContentFromFile(file)
-		lootJS(content, regex, file, show_matching_location, verbose)
+		lootJS(content, regex, file, show_matching_location, verbose, output_file)
 	}
 }
 
@@ -404,6 +414,7 @@ func showHelper() {
 		"\t\t\t\t      Can be used in complement with -e",
 		"",
 		"-- SHOW THE LOOT -- ",
+		" -o, --output-file <path>\tWrite down result to file",
 		" -w, --with-filename\t\tShow filename/URL of loot location",
 		" -v, --verbose\t\t\tPrint with detailed output and colors",
 	}
@@ -480,6 +491,10 @@ func main() {
 	flag.BoolVar(&show_matching_location, "with-filename", false, "")
 	flag.BoolVar(&show_matching_location, "w", false, "")
 
+	var output string
+	flag.StringVar(&output, "output-file", "", "")
+	flag.StringVar(&output, "o", "", "")
+
 	var verbose bool
 	flag.BoolVar(&verbose, "verbose", false, "")
 	flag.BoolVar(&verbose, "v", false, "")
@@ -491,11 +506,23 @@ func main() {
 	host := setHostHeaderIfExists(headers)
 
 	if regex != "" {
+
+		var output_file *os.File
+		if output != "" {
+			var err error
+			output_file, err = os.Create(output)
+			if isError(err) {
+				os.Exit(1)
+			}
+
+			defer output_file.Close()
+		}
+
 		if url != "" {
-			lootJSOnURL(url, regex, show_matching_location, verbose, proxy, not_check_cert, host, cookies, headers)
+			lootJSOnURL(url, regex, show_matching_location, verbose, proxy, not_check_cert, host, cookies, headers, output_file)
 
 		} else if file != "" {
-			lootJSOnFile([]string{file}, regex, show_matching_location, verbose)
+			lootJSOnFile([]string{file}, regex, show_matching_location, verbose, output_file)
 		} else if dir != "" {
 			if !isDir(dir) {
 				return
@@ -507,12 +534,12 @@ func main() {
 				file_list = listFilesInDir(dir)
 			}
 
-			lootJSOnFile(file_list, regex, show_matching_location, verbose)
+			lootJSOnFile(file_list, regex, show_matching_location, verbose, output_file)
 		} else if stdin {
 			sc := bufio.NewScanner(os.Stdin)
 			for sc.Scan() {
 				url = sc.Text()
-				lootJSOnURL(url, regex, show_matching_location, verbose, proxy, not_check_cert, host, cookies, headers)
+				lootJSOnURL(url, regex, show_matching_location, verbose, proxy, not_check_cert, host, cookies, headers, output_file)
 			}
 		} else {
 			showHelper()
