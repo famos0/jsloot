@@ -141,6 +141,7 @@ func getJsURLsFromHTML(response *http.Response) []string {
 
 	var urls []string
 	tokenizer := html.NewTokenizer(response.Body)
+	site := response.Request.URL
 	for {
 		tt := tokenizer.Next()
 		t := tokenizer.Token()
@@ -159,14 +160,25 @@ func getJsURLsFromHTML(response *http.Response) []string {
 				continue
 			}
 
-			url := getSrcFromTags(t)
-			if url == "" {
+			u, err := url.QueryUnescape(getSrcFromTags(t))
+			if isError(err) {
 				continue
 			}
 
-			hasProto := strings.Index(url, "http") == 0
+			ur, err := url.Parse(u)
+			if isError(err) {
+				continue
+			}
+
+			u = site.ResolveReference(ur).String()
+
+			if u == "" {
+				continue
+			}
+
+			hasProto := strings.Index(u, "http") == 0
 			if hasProto {
-				urls = append(urls, url)
+				urls = append(urls, u)
 			}
 		}
 	}
