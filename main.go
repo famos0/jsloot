@@ -178,6 +178,7 @@ func getJsURLsFromHTML(response *http.Response) []string {
 
 			hasProto := strings.Index(u, "http") == 0
 			if hasProto {
+				fmt.Println(u)
 				urls = append(urls, u)
 			}
 		}
