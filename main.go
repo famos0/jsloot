@@ -399,7 +399,7 @@ func isDir(dir string) bool {
 
 func showHelper() {
 	helper := []string{
-		"JSLoot by famos0",
+		"JSLoot by zblurx",
 		"",
 		"Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript",
 		"",

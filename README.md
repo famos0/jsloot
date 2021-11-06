@@ -5,14 +5,14 @@ Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript
 ## Install
 
 ```bash
-go get -u github.com/famos0/jsloot
+go get -u github.com/zblurx/jsloot
 ```
 
 ## Use
 
 ```bash
 $ jsloot -h
-JSLoot by famos0
+JSLoot by zblurx
 
 Looting URLs, IPv4 addresses, base64 encoded stuff and aws-keys from JavaScript
 

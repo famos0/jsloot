@@ -1,4 +1,4 @@
-module github.com/famos0/jsloot
+module github.com/zblurx/jsloot
 
 go 1.13
 
